@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/iri-rfc3987.svg)](https://crates.io/crates/iri-rfc3987)
 [![Documentation](https://docs.rs/iri-rfc3987/badge.svg)](https://docs.rs/iri-rfc3987)
 [![CI](https://github.com/legra-ai/iri-rfc3987/actions/workflows/ci.yml/badge.svg)](https://github.com/legra-ai/iri-rfc3987/actions/workflows/ci.yml)
-[![License](https://img.shields.io/crates/l/iri-rfc3987.svg)](https://github.com/legra-ai/iri-rfc3987/blob/main/LICENSE-APACHE)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![Downloads](https://img.shields.io/crates/d/iri-rfc3987.svg)](https://crates.io/crates/iri-rfc3987)
 
 Zero-copy parsing, validation, and resolution for Internationalized Resource
@@ -133,6 +133,8 @@ from [`fluent-uri`](https://crates.io/crates/fluent-uri) 0.4.1. URI-only types
 and builder APIs are intentionally not included.
 
 ## License
+
+Copyright © 2026 `DataRoad Inc`, Delaware, USA, trading as Legra.
 
 Licensed under either of:
 
