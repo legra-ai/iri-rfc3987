@@ -1,12 +1,13 @@
 [package]
 name = "iri-rfc3987"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 description = "Zero-copy parsing, validation, and resolution for Internationalized Resource Identifiers"
 repository = "https://github.com/legra-ai/iri-rfc3987"
 homepage = "https://github.com/legra-ai/iri-rfc3987"
+documentation = "https://docs.rs/iri-rfc3987"
 keywords = ["iri", "uri", "rfc3987", "rfc3986", "parser"]
 categories = ["parser-implementations", "web-programming"]
 readme = "README.md"
