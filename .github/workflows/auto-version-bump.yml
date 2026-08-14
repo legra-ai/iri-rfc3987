@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   bump:
-    uses: dataroadinc/github-actions/.github/workflows/cargo-auto-version-bump.yml@main
+    uses: legra-ai/github-actions/.github/workflows/cargo-auto-version-bump.yml@main
     with:
       crate-name: iri-rfc3987
       match-mode: first-line-prefix
