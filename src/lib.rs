@@ -1,4 +1,4 @@
-//! Internationalized Resource Identifier handling for RFC 3987 and RFC 3986.
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 // Vendored IRI parser code uses `i` as idiomatic index variables.
 #![allow(clippy::disallowed_names)]
