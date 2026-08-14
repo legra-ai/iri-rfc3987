@@ -1,0 +1,260 @@
+//! Byte pattern tables from RFC 3986 and RFC 3987.
+//!
+//! The predefined table constants in this module are documented with
+//! the ABNF notation of [RFC 5234].
+//!
+//! [RFC 5234]: https://datatracker.ietf.org/doc/html/rfc5234
+
+#[cfg(test)]
+use crate::{pct_enc, utf8};
+
+const MASK_PCT_ENCODED: u64 = 1 << b'%';
+const MASK_UCSCHAR: u64 = 1;
+const MASK_IPRIVATE: u64 = 2;
+const MASK_UNENCODED_ASCII: u64 = !(MASK_PCT_ENCODED | MASK_UCSCHAR | MASK_IPRIVATE);
+
+const fn is_ucschar(x: u32) -> bool {
+    matches!(x, 0xa0..=0xd7ff | 0xf900..=0xfdcf | 0xfdf0..=0xffef)
+        || (x >= 0x10000 && x <= 0xdffff && (x & 0xffff) <= 0xfffd)
+        || (x >= 0xe1000 && x <= 0xefffd)
+}
+
+const fn is_iprivate(x: u32) -> bool {
+    (x >= 0xe000 && x <= 0xf8ff) || (x >= 0xf0000 && (x & 0xffff) <= 0xfffd)
+}
+
+/// A table specifying the byte patterns allowed in a string.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Table(u64, u64);
+
+impl Table {
+    /// Creates a table that only allows the given unencoded bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the bytes is not ASCII or equals `0`, `1`, or
+    /// `b'%'`.
+    #[must_use]
+    pub(crate) const fn new(mut bytes: &[u8]) -> Self {
+        let mut table = 0;
+        while let [cur, rem @ ..] = bytes {
+            assert!(
+                !matches!(cur, 0 | 1 | b'%' | 128..),
+                "cannot allow non-ASCII byte, 0, 1, or %"
+            );
+            table |= 1u128.wrapping_shl(*cur as u32);
+            bytes = rem;
+        }
+        Self(table as u64, (table >> 64) as u64)
+    }
+
+    /// Combines two tables into one.
+    ///
+    /// Returns a new table that allows all the byte patterns allowed by
+    /// `self` or by `other`.
+    #[must_use]
+    pub(crate) const fn or(self, other: Self) -> Self {
+        Self(self.0 | other.0, self.1 | other.1)
+    }
+
+    /// Marks this table as allowing percent-encoded octets.
+    #[must_use]
+    pub(crate) const fn or_pct_encoded(self) -> Self {
+        Self(self.0 | MASK_PCT_ENCODED, self.1)
+    }
+
+    /// Marks this table as allowing characters matching the
+    /// [`ucschar`] ABNF rule from RFC 3987.
+    ///
+    /// [`ucschar`]: https://datatracker.ietf.org/doc/html/rfc3987#section-2.2
+    #[must_use]
+    pub(crate) const fn or_ucschar(self) -> Self {
+        Self(self.0 | MASK_UCSCHAR, self.1)
+    }
+
+    /// Marks this table as allowing characters matching the
+    /// [`iprivate`] ABNF rule from RFC 3987.
+    ///
+    /// [`iprivate`]: https://datatracker.ietf.org/doc/html/rfc3987#section-2.2
+    #[must_use]
+    pub(crate) const fn or_iprivate(self) -> Self {
+        Self(self.0 | MASK_IPRIVATE, self.1)
+    }
+
+    #[inline]
+    pub(crate) const fn allows_ascii(self, x: u8) -> bool {
+        let table = if x < 64 {
+            self.0 & MASK_UNENCODED_ASCII
+        } else if x < 128 {
+            self.1
+        } else {
+            0
+        };
+        table & 1u64.wrapping_shl(x as u32) != 0
+    }
+
+    #[inline]
+    pub(crate) const fn allows_non_ascii(self) -> bool {
+        self.0 & (MASK_UCSCHAR | MASK_IPRIVATE) != 0
+    }
+
+    #[inline]
+    pub(crate) const fn allows_code_point(self, x: u32) -> bool {
+        if x < 128 {
+            return self.allows_ascii(x as u8);
+        }
+        if self.0 & MASK_UCSCHAR != 0 && is_ucschar(x) {
+            return true;
+        }
+        if self.0 & MASK_IPRIVATE != 0 && is_iprivate(x) {
+            return true;
+        }
+        false
+    }
+
+    /// Checks whether the given unencoded character is allowed by the
+    /// table.
+    #[inline]
+    #[must_use]
+    #[cfg(test)]
+    pub(crate) const fn allows(self, ch: char) -> bool {
+        self.allows_code_point(ch as u32)
+    }
+
+    /// Checks whether percent-encoded octets are allowed by the table.
+    #[inline]
+    #[must_use]
+    pub(crate) const fn allows_pct_encoded(self) -> bool {
+        self.0 & MASK_PCT_ENCODED != 0
+    }
+
+    /// Validates the given string with the table.
+    #[cfg(test)]
+    pub(crate) const fn validate(self, s: &[u8]) -> bool {
+        let mut i = 0;
+
+        macro_rules! do_loop {
+            ($allow_pct_encoded:expr, $allow_non_ascii:expr) => {
+                while i < s.len() {
+                    let x = s[i];
+                    if $allow_pct_encoded && x == b'%' {
+                        if i + 2 >= s.len() {
+                            return false;
+                        }
+                        let (hi, lo) = (s[i + 1], s[i + 2]);
+
+                        if !pct_enc::is_hexdig_pair(hi, lo) {
+                            return false;
+                        }
+                        i += 3;
+                    } else if $allow_non_ascii {
+                        let (x, len) = utf8::next_code_point(s, i);
+                        if !self.allows_code_point(x) {
+                            return false;
+                        }
+                        i += len;
+                    } else {
+                        if !self.allows_ascii(x) {
+                            return false;
+                        }
+                        i += 1;
+                    }
+                }
+            };
+        }
+
+        if self.allows_pct_encoded() {
+            if self.allows_non_ascii() {
+                do_loop!(true, true);
+            } else {
+                do_loop!(true, false);
+            }
+        } else if self.allows_non_ascii() {
+            do_loop!(false, true);
+        } else {
+            do_loop!(false, false);
+        }
+
+        true
+    }
+}
+
+const fn new(bytes: &[u8]) -> Table {
+    Table::new(bytes)
+}
+
+// Rules from RFC 3986:
+
+/// `ALPHA = %x41-5A / %x61-7A`
+pub(crate) const ALPHA: Table = new(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
+
+/// `DIGIT = %x30-39`
+pub(crate) const DIGIT: Table = new(b"0123456789");
+
+/// `HEXDIG = DIGIT / "A" / "B" / "C" / "D" / "E" / "F"`
+pub(crate) const HEXDIG: Table = DIGIT.or(new(b"ABCDEFabcdef"));
+
+/// `scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )`
+pub(crate) const SCHEME: Table = ALPHA.or(DIGIT).or(new(b"+-."));
+
+/// `userinfo = *( unreserved / pct-encoded / sub-delims / ":" )`
+pub(crate) const USERINFO: Table = UNRESERVED.or(SUB_DELIMS).or(new(b":")).or_pct_encoded();
+
+/// `IPvFuture = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":"
+/// )`
+pub(crate) const IPV_FUTURE: Table = UNRESERVED.or(SUB_DELIMS).or(new(b":"));
+
+/// `reg-name = *( unreserved / pct-encoded / sub-delims )`
+pub(crate) const REG_NAME: Table = UNRESERVED.or(SUB_DELIMS).or_pct_encoded();
+
+/// `path = *( pchar / "/" )`
+pub(crate) const PATH: Table = PCHAR.or(new(b"/"));
+
+/// `segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@"
+/// )`
+pub(crate) const SEGMENT_NZ_NC: Table = UNRESERVED.or(SUB_DELIMS).or(new(b"@")).or_pct_encoded();
+
+/// `pchar = unreserved / pct-encoded / sub-delims / ":" / "@"`
+pub(crate) const PCHAR: Table = UNRESERVED.or(SUB_DELIMS).or(new(b":@")).or_pct_encoded();
+
+/// `query = *( pchar / "/" / "?" )`
+pub(crate) const QUERY: Table = PCHAR.or(new(b"/?"));
+
+/// `fragment = *( pchar / "/" / "?" )`
+pub(crate) const FRAGMENT: Table = QUERY;
+
+/// `unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"`
+pub(crate) const UNRESERVED: Table = ALPHA.or(DIGIT).or(new(b"-._~"));
+
+/// `reserved = gen-delims / sub-delims`
+#[cfg(test)]
+pub(crate) const RESERVED: Table = GEN_DELIMS.or(SUB_DELIMS);
+
+/// `gen-delims = ":" / "/" / "?" / "#" / "[" / "]" / "@"`
+#[cfg(test)]
+pub(crate) const GEN_DELIMS: Table = new(b":/?#[]@");
+
+/// `sub-delims = "!" / "$" / "&" / "'" / "(" / ")"
+///             / "*" / "+" / "," / ";" / "="`
+pub(crate) const SUB_DELIMS: Table = new(b"!$&'()*+,;=");
+
+// Rules from RFC 3987 (IRI extensions):
+
+/// `iuserinfo = *( iunreserved / pct-encoded / sub-delims / ":" )`
+pub(crate) const IUSERINFO: Table = USERINFO.or_ucschar();
+
+/// `ireg-name = *( iunreserved / pct-encoded / sub-delims )`
+pub(crate) const IREG_NAME: Table = REG_NAME.or_ucschar();
+
+/// `ipath = *( ipchar / "/" )`
+pub(crate) const IPATH: Table = PATH.or_ucschar();
+
+/// `isegment-nz-nc = 1*( iunreserved / pct-encoded / sub-delims /
+/// "@" )`
+pub(crate) const ISEGMENT_NZ_NC: Table = SEGMENT_NZ_NC.or_ucschar();
+
+/// `iquery = *( ipchar / iprivate / "/" / "?" )`
+pub(crate) const IQUERY: Table = QUERY.or_ucschar().or_iprivate();
+
+/// `ifragment = *( ipchar / "/" / "?" )`
+pub(crate) const IFRAGMENT: Table = FRAGMENT.or_ucschar();

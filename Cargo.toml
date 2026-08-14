@@ -1,0 +1,30 @@
+[package]
+name = "iri-rfc3987"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Zero-copy parsing, validation, and resolution for Internationalized Resource Identifiers"
+repository = "https://github.com/legra-ai/iri-rfc3987"
+homepage = "https://github.com/legra-ai/iri-rfc3987"
+keywords = ["iri", "uri", "rfc3987", "rfc3986", "parser"]
+categories = ["parser-implementations", "web-programming"]
+readme = "README.md"
+
+[lib]
+doctest = false
+
+[dependencies]
+borrow-or-share = "0.2"
+ref-cast = "1.0"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
