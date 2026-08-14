@@ -1,6 +1,6 @@
 [package]
 name = "iri-rfc3987"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -10,9 +10,6 @@ homepage = "https://github.com/legra-ai/iri-rfc3987"
 keywords = ["iri", "uri", "rfc3987", "rfc3986", "parser"]
 categories = ["parser-implementations", "web-programming"]
 readme = "README.md"
-
-[lib]
-doctest = false
 
 [dependencies]
 borrow-or-share = "0.2"
