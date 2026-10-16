@@ -2,7 +2,7 @@
 name = "iri-rfc3987"
 version = "0.1.4"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.99.1"
 license = "MIT OR Apache-2.0"
 description = "Zero-copy parsing, validation, and resolution for Internationalized Resource Identifiers"
 repository = "https://github.com/legra-ai/iri-rfc3987"
