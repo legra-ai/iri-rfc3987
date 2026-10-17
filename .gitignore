@@ -1,2 +1,5 @@
 /target
 CHANGELOG.md
+
+__pycache__/
+*.pyc
