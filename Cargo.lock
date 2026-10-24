@@ -85,7 +85,7 @@ dependencies = [
 
 [[package]]
 name = "iri-rfc3987"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "borrow-or-share",
  "ref-cast",
