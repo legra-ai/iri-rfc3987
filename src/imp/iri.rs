@@ -108,6 +108,16 @@ impl Iri<String> {
         self.val
     }
 
+    /// Returns the byte capacity of the owned backing string.
+    ///
+    /// This includes unused reserved space, but excludes the inline `String`
+    /// fields and allocator bookkeeping. Borrowing the IRI does not allocate.
+    #[inline]
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        self.val.capacity()
+    }
+
     /// Parse a known-valid IRI constant.
     ///
     /// Use this for compile-time-known IRI strings (e.g., namespace
