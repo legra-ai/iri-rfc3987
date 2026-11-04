@@ -125,7 +125,7 @@ The result distinguishes references with a scheme from relative references.
 This API validates syntax; it does not resolve references or retain parsed
 component positions. Use `IriRef` when the complete reference is already owned
 or borrowed and its components are needed. An IPv6 literal uses a fixed buffer
-bounded by its grammar; userinfo, registered names, IPvFuture components, paths,
+bounded by its grammar; userinfo, registered names, `IPvFuture` components, paths,
 queries and fragments have no imposed length limit.
 
 ## Serde
