@@ -102,6 +102,32 @@ let rdf_type = Iri::known("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
 assert_eq!(rdf_type.as_str(), "http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
 ```
 
+## Incremental validation
+
+`IriReferenceValidator` validates arbitrary byte windows in constant space,
+including windows that split UTF-8 characters or percent escapes. It does not
+retain the reference or allocate a complete string. Call `finish` only after
+the source has reached verified EOF; a valid prefix is not a valid complete
+reference. Errors are sticky, and their byte offsets refer to the whole input.
+
+```rust
+use iri_rfc3987::IriReferenceValidator;
+
+let mut validator = IriReferenceValidator::new();
+validator.push(b"https://example.test/caf\xc3")?;
+validator.push(b"\xa9?q=%")?;
+validator.push(b"20")?;
+assert!(validator.finish()?.is_absolute());
+# Ok::<(), iri_rfc3987::IriParseError>(())
+```
+
+The result distinguishes references with a scheme from relative references.
+This API validates syntax; it does not resolve references or retain parsed
+component positions. Use `IriRef` when the complete reference is already owned
+or borrowed and its components are needed. An IPv6 literal uses a fixed buffer
+bounded by its grammar; userinfo, registered names, `IPvFuture` components, paths,
+queries and fragments have no imposed length limit.
+
 ## Serde
 
 `Iri` and `IriRef` serialize as their validated string representation and

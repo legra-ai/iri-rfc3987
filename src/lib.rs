@@ -26,12 +26,14 @@ mod normalize;
 mod parse;
 mod pct_enc;
 mod resolve;
+mod streaming;
 mod utf8;
 
 pub use convert::TryIntoIri;
 pub use error::IriParseError;
 pub use imp::{Iri, IriRef};
 pub use resolve::ResolveError;
+pub use streaming::{IriReferenceClassification, IriReferenceValidator};
 
 #[cfg(test)]
 mod tests;
