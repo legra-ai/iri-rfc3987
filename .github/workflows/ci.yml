@@ -11,7 +11,7 @@ permissions:
   actions: read
 jobs:
   ci:
-    uses: legra-ai/github-actions/.github/workflows/cargo-maintenance.yml@8cdaad621c581c2f59e5eb0dfafc05f635c12c0a
+    uses: legra-ai/github-actions/.github/workflows/cargo-maintenance.yml@5e41b92e70d9398dd2bda441f5017ffe35824b5e
     with:
       breaking-change-bump: minor
       crate-name: iri-rfc3987
